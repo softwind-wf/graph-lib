@@ -149,16 +149,6 @@
         <artifactId>maven-install-plugin</artifactId>
         <version>3.1.0</version>
       </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-deploy-plugin</artifactId>
-        <version>3.1.2</version>
-        <configuration>
-          <!-- 默认部署到工作区内的 file:// 仓库(内网/离线可用);发布到中央仓库时改 -DaltDeploymentRepository -->
-          <altDeploymentRepository>graph-lib-local::default::file://${project.basedir}/repo</altDeploymentRepository>
-        </configuration>
-      </plugin>
     </plugins>
   </build>
 
@@ -197,8 +187,11 @@
     </profile>
 
     <!--
-      发布/打包全套产物时激活:mvn -Prelease clean package
-      产出 graph-lib-1.0.0.jar + -sources.jar + -javadoc.jar(发布到中央仓库要求后两者)。
+      打包全套产物:mvn -Prelease clean package
+      产出 graph-lib-1.0.0.jar + -sources.jar + -javadoc.jar
+      (后两个给 IDE 看源码 / 出 API 文档,也是万一以后要发 Maven Central 时的必备件)。
+      本项目的发布方式是"只走 GitHub":推代码 + 推 tag(JitPack 自动构建)+ 可选地在
+      GitHub Releases 挂 dist/ 下的 jar,见 README 第 6 节。真正的 Central 发布步骤见 README 附录。
     -->
     <profile>
       <id>release</id>
@@ -230,33 +223,6 @@
                 <goals><goal>jar</goal></goals>
               </execution>
             </executions>
-          </plugin>
-
-          <!--
-            Maven 中央仓库要求构件做 GPG 签名。用环境变量提供密钥:
-              set GPG_KEYNAME=你的密钥ID
-              set GPG_PASSPHRASE=密钥口令
-            没有 GPG 密钥时不要激活 release profile(这一步会失败)。
-          -->
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>3.1.0</version>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals><goal>sign</goal></goals>
-              </execution>
-            </executions>
-            <configuration>
-              <keyname>${env.GPG_KEYNAME}</keyname>
-              <passphrase>${env.GPG_PASSPHRASE}</passphrase>
-              <gpgArguments>
-                <arg>--pinentry-mode</arg>
-                <arg>loopback</arg>
-              </gpgArguments>
-            </configuration>
           </plugin>
         </plugins>
       </build>

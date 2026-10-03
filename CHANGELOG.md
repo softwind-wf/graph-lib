@@ -40,3 +40,8 @@
 - `GlobalMincut` 用 Θ(V²) 权重矩阵实现,顶点数上限 2048。
 - `TransitiveClosure` 结果是 V² 个布尔值,顶点数上限 16384。
 - `AssignmentProblem` 只处理 n×n 方阵;最大化收益请把代价取负。
+**发布方式**
+
+- 只走 GitHub:推代码 + 推 tag(`v1.0.0`),需要给别人的话用 JitPack,或把 `dist/` 下的 jar 挂到
+  GitHub Releases。**不发布 Maven 中央仓库**(需要 GPG 签名与 Sonatype 账号,个人项目属于额外负担;
+  POM 元数据已按 Central 要求备好,将来想发只需要加回 gpg 插件,见 README 附录)。

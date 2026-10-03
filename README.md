@@ -171,129 +171,101 @@ mvn -Prelease package    # 额外产出 -sources.jar / -javadoc.jar(需要联网
 
 ---
 
-## 6. 发布到网上:可以,先看清单
+## 6. 发布到 GitHub(本项目采用的方式)
 
-技术上完全可以发布。可选渠道与前置条件:
+**结论:只走 GitHub 就够了**,不必发布到 Maven 中央仓库(那要 GPG 签名 + Sonatype 账号,对个人项目
+属于额外负担)。GitHub 路线已经能满足两种需求:
 
-| 渠道 | 适合 | 前置条件 |
-|---|---|---|
-| **Maven Central**(Sonatype Central Portal) | 想让任何人 `<dependency>` 就能用 | 见下方"中央仓库 5 项硬要求";免费,但要一次性配置 |
-| **GitHub Packages** | 自己的项目/团队用 | GitHub 账号 + `settings.xml` 里配 token;别人用要配仓库地址与凭证 |
-| **JitPack** | 已放在 GitHub/Gitee 上的开源项目 | 打 tag 即可,`com.github.<用户>:<仓库>:<tag>` |
-| **Gitee / 阿里云效 / 自建 Nexus** | 国内团队内部 | 私服账号;不公开但可用 |
+- **你以后自己的项目用**:clone 后 `mvn install`,然后按坐标依赖(第 2 节方式 B);
+- **别人用**:clone 自己构建、用 JitPack 一行依赖(打个 tag 即触发,零成本)、或从 GitHub Releases
+  直接下载 jar。
 
-### 第 0 步:先把库推到 GitHub(顺序不能反)
-
-**先建远程仓库,再 push** —— 顺序反了 Git 会报 `remote: Repository not found.`,
-那**不是网络问题**,而是远程仓库还不存在(或私有且当前凭据无权访问)。
+### 6.1 推代码与打 tag(三步)
 
 ```bash
 cd graph-lib
 
-# 方式 1:网页建仓库后再推(fake 15 秒)
-#   打开 https://github.com/new → Owner 选 softwind-wf,名字填 graph-lib
-#   不要勾 "Add a README file" / .gitignore / license(否则远程会有提交,和本地冲突)
+# 1) 首次:建好远程仓库后关联并推送
+#    网页 https://github.com/new → Owner: softwind-wf,名字: graph-lib,不要勾任何初始化文件
 git remote add origin https://github.com/softwind-wf/graph-lib.git   # 已配置过可跳过
 git push -u origin main
 
-# 方式 2:一条命令(脚本会先调 API 建仓库,再推)
-$env:GITHUB_TOKEN = "ghp_xxxxxxxx"        # 需要 repo 权限的 PAT
-pwsh scripts/push-to-github.ps1
+# 2) 打版本 tag 并推送(推 tag 会让 JitPack 能构建,也方便做 Release)
+git tag -a v1.0.0 -m "graph-lib 1.0.0"
+git push origin v1.0.0
 
-# 方式 3:用 SSH(免每次输令牌)
-ssh-keygen -t ed25519 -C "softwind-wf@users.noreply.github.com"
-#   把 ~/.ssh/id_ed25519.pub 贴到 https://github.com/settings/keys
-pwsh scripts/push-to-github.ps1 -Ssh
+# 也可以一键(建仓库 + 推送 + 失败诊断)
+pwsh scripts/push-to-github.ps1          # 想用 SSH 就加 -Ssh
 ```
 
-`Repository not found` 的三种原因与处理:
+### 6.2 以后发新版本
+
+```bash
+# 1. 改 pom.xml 的 <version>(例如 1.1.0),同步 CHANGELOG.md
+git commit -am "release 1.1.0" && git push origin main
+# 2. 打新 tag 并推送(JitPack 会为每个 tag 单独构建)
+git tag -a v1.1.0 -m "graph-lib 1.1.0" && git push origin v1.1.0
+```
+
+### 6.3 可选:在 GitHub Releases 挂 jar(给不用 Maven 的人)
+
+网页 → **Releases → Draft a new release** → 选 tag `v1.0.0` → 把 `dist/` 下三个文件拖进去:
+
+```
+graph-lib-1.0.0.jar           # 运行时只需要这个
+graph-lib-1.0.0-sources.jar   # IDE 里看源码
+graph-lib-1.0.0-javadoc.jar   # API 文档
+```
+
+这样不会用 Maven 的人也能直接下载使用。
+
+### 6.4 `Repository not found` 的排查
 
 | 原因 | 判断 | 处理 |
 |---|---|---|
-| 仓库还没建(最常见) | 打开 `https://github.com/softwind-wf?tab=repositories` 找不到 graph-lib | 按上面"方式 1"建仓库,或"方式 2"交给脚本 |
-| 私有仓库 + 当前凭据无权限 | 仓库确实存在但你是用别的账号/过期令牌推 | `cmdkey /delete:git:https://github.com` 清掉旧凭据,重新推送并按提示登录 |
-| 账号或仓库名拼错 | `git remote -v` 显示的名字和你账号对不上 | `git remote set-url origin <正确地址>`,或用脚本的 `-Owner` / `-Repo` 参数 |
+| 仓库还没建(最常见) | `https://github.com/softwind-wf?tab=repositories` 里找不到 graph-lib | 先在网页建仓库,或用 `scripts/push-to-github.ps1` |
+| 私有仓库 + 凭据无权 | 仓库确实存在,但你用的是别的账号或过期令牌 | `cmdkey /delete:git:https://github.com` 清凭据后重试 |
+| 账号或仓库名拼错 | `git remote -v` 与实际不符 | `git remote set-url origin <正确地址>` |
 
-> 顺带一提:如果你更想把库放在已有的 `algs-exercise` 仓库里当子目录,也可以 —— 但那样
-> `pom.xml` 里的 `<url>` / `<scm>` 要改成那个仓库,而且库和练手代码混在一起不便引用。
-> 建议单独建 `graph-lib` 仓库(本库的元数据已经按这个地址填好)。
-
-
-
-| 要求 | 本库现状 |
-|---|---|
-| 1. **groupId 所有权** | ✅ `io.github.softwind-wf` —— 用 GitHub 账号 `softwind-wf` 即可验证命名空间 |
-| 2. **GPG 签名** | ⚠️ 待你申请密钥;插件已配在 `release` profile 里(读环境变量 `GPG_KEYNAME` / `GPG_PASSPHRASE`) |
-| 3. **`-sources.jar` 与 `-javadoc.jar`** | ✅ `-Prelease` 生成,`dist/` 里也已备好 |
-| 4. **完整 POM 元数据** | ✅ name / description / url / licenses / developers / scm 均已指向 `github.com/softwind-wf/graph-lib` |
-| 5. **明确许可证** | ✅ MIT(`LICENSE`,pom `<licenses>` 已同步) |
-
-发布步骤:
-
-```bash
-# 0) 先把代码推到 GitHub:仓库名建议就是 graph-lib,地址 github.com/softwind-wf/graph-lib
-#    并在 Sonatype Central Portal 用 GitHub 账号验证命名空间 io.github.softwind-wf
-# 1) 申请 GPG 密钥并上传公钥
-gpg --gen-key
-gpg --keyserver keyserver.ubuntu.com --send-keys <你的密钥ID>
-# 2) 一条命令发布
-set GPG_KEYNAME=<你的密钥ID>
-set GPG_PASSPHRASE=<密钥口令>
-mvn -Prelease clean deploy ^
-  "-DaltDeploymentRepository=ossrh::default::https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-# 3) 在 Central Portal 点 Publish,几分钟到几小时后全世界就能 <dependency> 到你
-```
-
-> 本机直连 GitHub 不通(见工程记忆),所以第 0 步的推送与 Sonatype 账号注册需要你在能访问 GitHub 的网络环境里完成。
-
-### ⚠️ 许可证提醒(重要,别跳过)
-
-- 本库的**代码是为这份工程独立编写的**,但它的**算法、术语与样例数据明显源自**
-  《Algorithms, 4th Edition》(Princeton)**与中文教材《精讲数据结构(Java 语言实现)》**;
-  **algs4 的官方实现是 GPLv3**。
-- 所以:
-  - 本库按"照着算法自己写实现"处理,**采用 MIT**(`LICENSE` 已按此写好);
-    但**一旦你从 algs4 复制过任何代码/注释/数据结构细节**,整份作品就要按 GPLv3 走 —— 请自查一次。
-  - 样例数据文件(`tinyEWDAG.txt` 等)**是本工程为测试自行整理/构造的**,随库分发没问题;
-    但若你打算把 algs4 的原始数据文件一并分发,请先确认其许可。
-  - 测试当参照物用的 algs4 jar **只在 `repo/` 里供本地差分验证,不要随发布产物上传**。
-
-### 发布前的其它建议
-
-- 包名已改为 `io.github.softwindwf.graph`(发布后很难再改);若以后要换,用一次全局替换 + 全量回归即可。
-- 版本号从 `1.0.0` 起,之后遵循语义化版本:API 变化升主版本。
-- 建议加 `CHANGELOG.md` 与 CI(`mvn -o test` 作为回归闸门)。
-- 注意:本库是**从主工程 `graph` 包抽取出来的独立副本**,主工程内仍保留 `cn.exercise.algs4.datastructure.graph` 那一份
-  (整个仓库都按 `cn.exercise.algs4.datastructure.*` 组织,不宜改名)。两边要同步时,把主工程的类复制过来、
-  再把包名替换成 `io.github.softwindwf.graph` 即可。
+> 这**不是网络问题**:能收到 `remote:` 开头的回复,就说明已经连上 GitHub 了。
 
 ---
 
-## 7. 别人怎么用你的库?(仓库公开 ≠ 别人能当依赖用)
+## 7. 别人怎么用你的库?
 
 **先分清两件事**:
 
-- **仓库公开**(现在已做到):别人能 clone、能读源码、能下载 `dist/` 里的 jar,但**不能**写一行
-  `<dependency>` 就自动拉取 —— Maven 不认识 GitHub 仓库里的源码;
-- **能被当依赖**:必须把**产物**发布到某个"仓库"里。按门槛从低到高有四档:
+- **仓库公开**:别人能 clone、能读源码、能下载 `dist/` 里的 jar,但**不能**写一行 `<dependency>`
+  就自动拉取 —— Maven 不认识 GitHub 仓库里的源码;
+- **能被当依赖**:必须把产物放到某个 Maven 仓库,或让对方手动安装/下载。
 
 | 档位 | 别人写的坐标 | 别人还要做的配置 | 你的成本 | 现状 |
 |---|---|---|---|---|
-| A. 源码 clone 后自建 | 无 | clone + `mvn install` | 0 | ✅ 已可用 |
-| B. **JitPack** | `com.github.softwind-wf:graph-lib:v1.0.0` | 项目里加一行 jitpack 仓库 | 0(打个 tag 触发) | ⏳ 差一个 tag |
-| C. **Maven Central** | `io.github.softwind-wf:graph-lib:1.0.0` | **完全不用配置** | GPG 密钥 + Sonatype 账号 | ⏳ 差密钥与账号 |
-| D. GitHub Packages | 同 C,但仓库指向 GitHub | 必须配 token(不能匿名) | 低 | 未配置 |
+| A. clone 后自建 | 无 | clone + `mvn install` | 0 | ✅ 已可用 |
+| B. **JitPack**(想让别人一行依赖用上) | `com.github.softwind-wf:graph-lib:v1.0.0` | 加一行 jitpack 仓库 | 打个 tag | ⏳ 推 tag 即生效 |
+| C. GitHub Releases 下载 jar | 无 | 手动下载 | 拖三个文件 | ⏳ 可选 |
+| D. Maven Central | `io.github.softwind-wf:graph-lib:1.0.0` | 零配置 | GPG + Sonatype 账号 | 未做(也不需要,见附录) |
 
-### B. JitPack —— 最快让别人"一行依赖"用上(建议先做)
-
-只要打一个 tag 并推送(`v1.0.0` 我已经在本地打好):
+### A. 你自己的下一个项目(最常用)
 
 ```bash
-cd graph-lib
-git push origin v1.0.0
+cd path/to/graph-lib
+mvn install          # 装进本地仓库
 ```
 
-然后别人在项目里(仓库只需加一次)+ 依赖:
+```xml
+<dependency>
+  <groupId>io.github.softwind-wf</groupId>
+  <artifactId>graph-lib</artifactId>
+  <version>1.0.0</version>
+</dependency>
+```
+
+不需要任何 `<repositories>` 配置,整个过程都在本机,对个人复用来讲完全够。
+
+### B. JitPack —— 让别人"一行依赖"用上
+
+推了 tag 之后(见 6.1),别人项目里加一次仓库 + 一条依赖:
 
 ```xml
 <repositories>
@@ -310,7 +282,7 @@ git push origin v1.0.0
 </dependency>
 ```
 
-Gradle 版本:
+Gradle:
 
 ```groovy
 repositories { maven { url 'https://jitpack.io' } }
@@ -319,45 +291,49 @@ dependencies { implementation 'com.github.softwind-wf:graph-lib:v1.0.0' }
 
 要点:
 
-- 首次构建要排队,几分钟;进度与**准确坐标**看 <https://jitpack.io/#softwind-wf/graph-lib/v1.0.0>
-  (页面上 "Get it" 给的坐标就是权威值,复制它最保险);
-- 仓库里已放 `jitpack.yml`,构建命令就是 `mvn -B install`(默认档:494 个用例,不依赖任何第三方,
-  所以 JitPack 上能直接构建成功);
-- 国内访问 `jitpack.io` 偶尔较慢,重试即可;
-- 每次发布新版本:改 pom 版本号 → 提交 → 打新 tag(`v1.1.0`…)→ 推送,JitPack 会各自构建。
-
-### C. Maven Central —— 终极形态(别人零配置)
-
-使用者**不需要任何 `<repositories>` 配置**,直接:
-
-```xml
-<dependency>
-  <groupId>io.github.softwind-wf</groupId>
-  <artifactId>graph-lib</artifactId>
-  <version>1.0.0</version>
-</dependency>
-```
-
-发布步骤见上一节的 5 项硬要求(现在只差 GPG 密钥与 Sonatype 账号)。发布后用这两条验证:
-
-```bash
-mvn dependency:get -Dartifact=io.github.softwind-wf:graph-lib:1.0.0
-# 或打开 https://central.sonatype.com/artifact/io.github.softwind-wf/graph-lib
-```
+- 首次构建要排队几分钟;**准确坐标**与构建状态看 <https://jitpack.io/#softwind-wf/graph-lib/v1.0.0>
+  (页面 "Get it" 给的坐标就是权威值,复制它最稳);
+- 仓库里已放 `jitpack.yml`,命令是 `mvn -B install`(默认档:494 个用例、零第三方依赖,所以能构建成功);
+- 国内访问 `jitpack.io` 偶尔慢,重试即可;
+- 以后每发一个版本就推一个新 tag,JitPack 会各自构建。
 
 ### 怎么确认"别人真的能用"?
 
-1. 建一个**空项目**,只写坐标 + 几行调用代码(不要引用你的本地源码);
-2. 在**干净的本地仓库**上构建(临时指定一个空目录即可,排除本机缓存干扰):
+1. 建一个**空项目**,只写坐标 + 几行调用代码(**不要引用你的本地源码**);
+2. 用一个**空目录**当本地仓库构建,排除你机器上的缓存干扰:
 
    ```bash
    mvn -Dmaven.repo.local=./tmp-repo test
    ```
 
-   能编译、能运行,说明别人也没问题;
-3. JitPack 看构建页是否 `Build successful`;Central 看 `central.sonatype.com` 能否搜到。
+3. JitPack 看构建页是否 `Build successful`。
 
----
+### 附录:以后若真要发 Maven Central
+
+本库的 POM 元数据(name / description / url / licenses / developers / scm)已按 Central 要求填好,
+许可证是 MIT;`-Prelease package` 也能产出 `-sources.jar` 与 `-javadoc.jar`。真要做的时候,
+只差三件外部事项(所以现在不必做):
+
+1. 在 <https://central.sonatype.com> 用 GitHub 账号验证命名空间 `io.github.softwind-wf`;
+2. `gpg --gen-key` 生成密钥,把公钥发到 keyserver;
+3. 在 pom 的 `release` profile 里加回 `maven-gpg-plugin`(为减负已移除),然后:
+
+   ```bash
+   mvn -Prelease clean deploy \
+     "-DaltDeploymentRepository=ossrh::default::https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+   ```
+
+   再到 Central Portal 点 Publish。官方文档:<https://central.sonatype.org/publish/>
+
+### 许可证与来源(读一次)
+
+- 本库代码为独立编写,采用 **MIT**(`LICENSE`);
+- 算法与术语参考了《Algorithms, 4th Edition》(Princeton,官方实现为 GPLv3)与中文教材
+  《精讲数据结构(Java 语言实现)》;**若你日后从 algs4 复制过任何代码/注释,整份作品需改为 GPLv3**;
+- 测试用的 algs4 参照 jar 不随仓库分发(`repo/edu/` 已在 `.gitignore` 中),详见 [NOTICE.md](NOTICE.md);
+- 本库是**从主工程 `graph` 包抽取出来的独立副本**,主工程内仍保留
+  `cn.exercise.algs4.datastructure.graph` 那一份(整个仓库按 `cn.exercise.algs4.datastructure.*` 组织,
+  不宜改名);两边同步时,把主工程的类复制过来、再把包名替换成 `io.github.softwindwf.graph` 即可。
 
 ## 8. 目录结构
 
