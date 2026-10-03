@@ -19,16 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-第三方与许可证说明(发布前请读一次):
-
-· 本库的算法与术语参考了《Algorithms, 4th Edition》(Princeton, 官方实现以 GPLv3 发布)
-  与中文教材《精讲数据结构(Java 语言实现)》。
-· 本库的代码为独立编写(未从 algs4 复制代码),因此采用上述 MIT 许可。
-  如果你日后从 algs4 复制了任何代码/注释,整份作品需改为按 GPLv3 分发。
-· 测试中作为"参照物"使用的 algs4 jar 仅用于本地差分验证,不随本库发布;
-  如需再分发 algs4 的任何内容,请先核对其许可证。
-· 随库附带的测试数据(tiny*.txt / routes.txt / coursesAOV.txt / projectAOE.txt)
-  是为本库的测试整理或构造的,可随库分发。

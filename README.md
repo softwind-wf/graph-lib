@@ -268,14 +268,107 @@ mvn -Prelease clean deploy ^
 
 ---
 
-## 7. 目录结构
+## 7. 别人怎么用你的库?(仓库公开 ≠ 别人能当依赖用)
+
+**先分清两件事**:
+
+- **仓库公开**(现在已做到):别人能 clone、能读源码、能下载 `dist/` 里的 jar,但**不能**写一行
+  `<dependency>` 就自动拉取 —— Maven 不认识 GitHub 仓库里的源码;
+- **能被当依赖**:必须把**产物**发布到某个"仓库"里。按门槛从低到高有四档:
+
+| 档位 | 别人写的坐标 | 别人还要做的配置 | 你的成本 | 现状 |
+|---|---|---|---|---|
+| A. 源码 clone 后自建 | 无 | clone + `mvn install` | 0 | ✅ 已可用 |
+| B. **JitPack** | `com.github.softwind-wf:graph-lib:v1.0.0` | 项目里加一行 jitpack 仓库 | 0(打个 tag 触发) | ⏳ 差一个 tag |
+| C. **Maven Central** | `io.github.softwind-wf:graph-lib:1.0.0` | **完全不用配置** | GPG 密钥 + Sonatype 账号 | ⏳ 差密钥与账号 |
+| D. GitHub Packages | 同 C,但仓库指向 GitHub | 必须配 token(不能匿名) | 低 | 未配置 |
+
+### B. JitPack —— 最快让别人"一行依赖"用上(建议先做)
+
+只要打一个 tag 并推送(`v1.0.0` 我已经在本地打好):
+
+```bash
+cd graph-lib
+git push origin v1.0.0
+```
+
+然后别人在项目里(仓库只需加一次)+ 依赖:
+
+```xml
+<repositories>
+  <repository>
+    <id>jitpack.io</id>
+    <url>https://jitpack.io</url>
+  </repository>
+</repositories>
+
+<dependency>
+  <groupId>com.github.softwind-wf</groupId>
+  <artifactId>graph-lib</artifactId>
+  <version>v1.0.0</version>
+</dependency>
+```
+
+Gradle 版本:
+
+```groovy
+repositories { maven { url 'https://jitpack.io' } }
+dependencies { implementation 'com.github.softwind-wf:graph-lib:v1.0.0' }
+```
+
+要点:
+
+- 首次构建要排队,几分钟;进度与**准确坐标**看 <https://jitpack.io/#softwind-wf/graph-lib/v1.0.0>
+  (页面上 "Get it" 给的坐标就是权威值,复制它最保险);
+- 仓库里已放 `jitpack.yml`,构建命令是 `mvn -B -Dmaven.test.skip=true install`
+  —— 跳过测试编译,因为差分测试要的 algs4 参照物不在公开仓库里;
+- 国内访问 `jitpack.io` 偶尔较慢,重试即可;
+- 每次发布新版本:改 pom 版本号 → 提交 → 打新 tag(`v1.1.0`…)→ 推送,JitPack 会各自构建。
+
+### C. Maven Central —— 终极形态(别人零配置)
+
+使用者**不需要任何 `<repositories>` 配置**,直接:
+
+```xml
+<dependency>
+  <groupId>io.github.softwind-wf</groupId>
+  <artifactId>graph-lib</artifactId>
+  <version>1.0.0</version>
+</dependency>
+```
+
+发布步骤见上一节的 5 项硬要求(现在只差 GPG 密钥与 Sonatype 账号)。发布后用这两条验证:
+
+```bash
+mvn dependency:get -Dartifact=io.github.softwind-wf:graph-lib:1.0.0
+# 或打开 https://central.sonatype.com/artifact/io.github.softwind-wf/graph-lib
+```
+
+### 怎么确认"别人真的能用"?
+
+1. 建一个**空项目**,只写坐标 + 几行调用代码(不要引用你的本地源码);
+2. 在**干净的本地仓库**上构建(临时指定一个空目录即可,排除本机缓存干扰):
+
+   ```bash
+   mvn -Dmaven.repo.local=./tmp-repo test
+   ```
+
+   能编译、能运行,说明别人也没问题;
+3. JitPack 看构建页是否 `Build successful`;Central 看 `central.sonatype.com` 能否搜到。
+
+---
+
+## 8. 目录结构
 
 ```
 graph-lib/
 ├── pom.xml                     # 库的 Maven 工程(坐标 io.github.softwind-wf:graph-lib:1.0.0)
 ├── README.md                   # 本文
-├── LICENSE                     # MIT
+├── LICENSE                     # MIT(纯 MIT 正文,GitHub 才能识别出许可证)
+├── NOTICE.md                   # 第三方来源与 algs4/GPL 说明
 ├── CHANGELOG.md                # 版本记录
+├── jitpack.yml                 # 让 JitPack 能构建本库
+├── scripts/push-to-github.ps1  # 建仓库 + 推送 + 失败诊断
 ├── src/main/java/io/github/softwindwf/graph/      # 46 个主类
 ├── src/test/java/io/github/softwindwf/graph/      # 47 个测试类(669 个测试)
 ├── tiny*.txt routes.txt ...    # 测试数据
@@ -284,7 +377,7 @@ graph-lib/
 └── samples/consumer/           # 消费者示例(可直接运行)
 ```
 
-## 8. 环境
+## 9. 环境
 
 - **JDK 8+**(源码/字节码目标 1.8;更高版本 JDK 也可运行)
 - 构建:**Maven 3.6+**;运行时:**无需任何依赖**

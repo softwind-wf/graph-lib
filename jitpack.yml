@@ -1,0 +1,16 @@
+# JitPack 构建配置
+# 作用:打 tag 后,JitPack 会自动 clone 这个 tag 并构建,别人就能用
+#   <dependency>
+#     <groupId>com.github.softwind-wf</groupId>
+#     <artifactId>graph-lib</artifactId>
+#     <version>v1.0.0</version>
+#   </dependency>
+#
+# 为什么跳过测试编译:差分测试需要 algs4 参照物,而它不随公开仓库分发
+# (见 NOTICE.md)。用 -Dmaven.test.skip=true 而不是 -DskipTests,
+# 因为后者仍会编译测试代码、仍会去解析 algs4 依赖。
+jdk:
+  - openjdk8
+
+install:
+  - mvn -B -Dmaven.test.skip=true install
