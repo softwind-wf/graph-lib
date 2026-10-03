@@ -181,7 +181,43 @@ mvn -Prelease package   # 额外产出 -sources.jar / -javadoc.jar(需要联网�
 | **JitPack** | 已放在 GitHub/Gitee 上的开源项目 | 打 tag 即可,`com.github.<用户>:<仓库>:<tag>` |
 | **Gitee / 阿里云效 / 自建 Nexus** | 国内团队内部 | 私服账号;不公开但可用 |
 
-**Maven Central 的 5 项硬要求**(发布前必须齐全):
+### 第 0 步:先把库推到 GitHub(顺序不能反)
+
+**先建远程仓库,再 push** —— 顺序反了 Git 会报 `remote: Repository not found.`,
+那**不是网络问题**,而是远程仓库还不存在(或私有且当前凭据无权访问)。
+
+```bash
+cd graph-lib
+
+# 方式 1:网页建仓库后再推(fake 15 秒)
+#   打开 https://github.com/new → Owner 选 softwind-wf,名字填 graph-lib
+#   不要勾 "Add a README file" / .gitignore / license(否则远程会有提交,和本地冲突)
+git remote add origin https://github.com/softwind-wf/graph-lib.git   # 已配置过可跳过
+git push -u origin main
+
+# 方式 2:一条命令(脚本会先调 API 建仓库,再推)
+$env:GITHUB_TOKEN = "ghp_xxxxxxxx"        # 需要 repo 权限的 PAT
+pwsh scripts/push-to-github.ps1
+
+# 方式 3:用 SSH(免每次输令牌)
+ssh-keygen -t ed25519 -C "softwind-wf@users.noreply.github.com"
+#   把 ~/.ssh/id_ed25519.pub 贴到 https://github.com/settings/keys
+pwsh scripts/push-to-github.ps1 -Ssh
+```
+
+`Repository not found` 的三种原因与处理:
+
+| 原因 | 判断 | 处理 |
+|---|---|---|
+| 仓库还没建(最常见) | 打开 `https://github.com/softwind-wf?tab=repositories` 找不到 graph-lib | 按上面"方式 1"建仓库,或"方式 2"交给脚本 |
+| 私有仓库 + 当前凭据无权限 | 仓库确实存在但你是用别的账号/过期令牌推 | `cmdkey /delete:git:https://github.com` 清掉旧凭据,重新推送并按提示登录 |
+| 账号或仓库名拼错 | `git remote -v` 显示的名字和你账号对不上 | `git remote set-url origin <正确地址>`,或用脚本的 `-Owner` / `-Repo` 参数 |
+
+> 顺带一提:如果你更想把库放在已有的 `algs-exercise` 仓库里当子目录,也可以 —— 但那样
+> `pom.xml` 里的 `<url>` / `<scm>` 要改成那个仓库,而且库和练手代码混在一起不便引用。
+> 建议单独建 `graph-lib` 仓库(本库的元数据已经按这个地址填好)。
+
+
 
 | 要求 | 本库现状 |
 |---|---|
