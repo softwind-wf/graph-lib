@@ -4,7 +4,8 @@
 一路做到有向图与强连通分量、网络流与匹配、全局最小割、指派问题、AOV/AOE 与关键路径,
 外加符号图(名字当顶点)和统一的文本 / Graphviz 读写。
 
-- **46 个主类**,**669 个测试**(其中含与 Princeton《Algorithms, 4th Edition》官方实现的**差分验证**)
+- **46 个主类**,**669 个测试**:默认构建跑其中 **494 个、零第三方依赖**;
+  另有 175 个与 Princeton《Algorithms, 4th Edition》官方实现的**差分验证**,用 `-Pdifferential` 打开
 - 运行时**不依赖任何第三方库**:只要 JDK 8+(库本身按 1.8 编译)
 - 每个类都带中文 Javadoc、`main` 演示、以及"为什么这么做"的设计说明
 
@@ -138,8 +139,9 @@ new GlobalMincut(tiny).weight();
 
 ```bash
 cd graph-lib
-mvn test          # 669 个测试
-mvn -Prelease package   # 额外产出 -sources.jar / -javadoc.jar(需要联网解析两个插件)
+mvn test                 # 默认:494 个用例,零第三方依赖(全新克隆即可跑,JitPack 也走这条)
+mvn -Pdifferential test  # 全量:669 个用例,含 175 个与 algs4 的差分验证(需要参照 jar,见下)
+mvn -Prelease package    # 额外产出 -sources.jar / -javadoc.jar(需要联网解析两个插件)
 ```
 
 这个库的测试不是"跑通就行",而是**用独立参照物交叉验证**:
@@ -150,20 +152,19 @@ mvn -Prelease package   # 额外产出 -sources.jar / -javadoc.jar(需要联网�
 | 另一个算法对拍(同一结论的两条技术路线) | Prim/Kruskal/Borůvka、Dijkstra/Bellman-Ford/Floyd-Warshall/Johnson、FF/EK/Dinic、Kuhn/Dinic 匹配、DFS/Warshall 传递闭包 |
 | 结构判据 | 无向图有环 ⟺ `E > V − 分量数`;二分图 ⟺ 无奇环;欧拉路 ⟺ 奇度顶点数 ∈ {0,2}(有向看入出度差) |
 | 最优性证书 | 最大流 = 最小割容量;势函数对偶可行 + 互补松弛 + 强对偶(指派问题);交换图无负环 |
-| 与官方参考实现差分 | 16 个测试类对拍 Princeton algs4 的同类实现 |
+| 与官方参考实现差分 | 17 个测试文件对拍 Princeton algs4 的同类实现(175 个用例) |
 | 规模用例 | 10 万~20 万顶点(栈溢出、Θ(V²) 扫描的取舍) |
 
-> 差分测试需要 algs4(仅 `test` 作用域,且 `<optional>`,不会传给使用方)。
-> 库内 `repo/edu/princeton/cs/algs4/` 自带一份参照 jar,构建时通过 `file://` 仓库解析。
-> **注意**:该目录已在 `.gitignore` 里(`repo/edu/`)—— algs4 是 GPLv3 构件,不应随公开仓库分发;
-> 从 GitHub 克隆后若想跑差分测试,把 algs4 的 jar 放到 `repo/edu/princeton/cs/algs4/1.0.0.0/`
-> (或装进你自己的本地仓库)即可。
-> 不想跑差分测试:删掉下面这些测试类并移除 pom 里 algs4 依赖即可 ——
-> `AdjMatrixEdgeWeightedDigraphTest` `AcyclicLPTest` `AcyclicSPTest` `BellmanFordSPTest`
-> `BipartiteMatchingTest` `BipartiteTest` `BoruvkaMSTTest` `DijkstraSPTest`
-> `DijkstraUndirectedSPTest` `DirectedCycleTest` `GlobalMincutTest` `JohnsonTest`
-> `EdmondsKarpTest` `FordFulkersonTest` `GraphIOTest` `TransitiveClosureTest`
-> (`grep -rl "edu.princeton" src/test` 可以随时核对这份清单)。
+**为什么要把测试分成两档?** 因为 algs4 **不在 Maven 中央仓库**,也不随本仓库分发
+(它是 GPLv3 构件)。所以默认构建用 `testExcludes` 把这 17 个文件排除在编译之外 ——
+于是全新克隆、CI、JitPack 都能在**零外部依赖**下跑通 494 个用例;想要完整的 669 个时,
+用 `-Pdifferential` 把依赖与这些文件一起加回来。
+
+17 个文件(175 个用例)的清单就在 `pom.xml` 的 `<testExcludes>` 里,
+它们之间的引用闭包已核对,不会出现"排除了 A、却留下引用 A 的 B"这类断裂。
+
+> 想跑差分测试:把 algs4 的 jar 放到 `repo/edu/princeton/cs/algs4/1.0.0.0/`
+> (该目录已在 `.gitignore` 中,不会进公开仓库),或装进你自己的本地仓库,然后 `mvn -Pdifferential test`。
 
 测试数据(`tinyG.txt`、`tinyEWG.txt`、`tinyEWD*.txt`、`tinyDG.txt`、`tinyFN.txt`、`routes.txt`、
 `coursesAOV.txt`、`projectAOE.txt`)放在模块根目录,测试以相对文件名读取。
@@ -320,8 +321,8 @@ dependencies { implementation 'com.github.softwind-wf:graph-lib:v1.0.0' }
 
 - 首次构建要排队,几分钟;进度与**准确坐标**看 <https://jitpack.io/#softwind-wf/graph-lib/v1.0.0>
   (页面上 "Get it" 给的坐标就是权威值,复制它最保险);
-- 仓库里已放 `jitpack.yml`,构建命令是 `mvn -B -Dmaven.test.skip=true install`
-  —— 跳过测试编译,因为差分测试要的 algs4 参照物不在公开仓库里;
+- 仓库里已放 `jitpack.yml`,构建命令就是 `mvn -B install`(默认档:494 个用例,不依赖任何第三方,
+  所以 JitPack 上能直接构建成功);
 - 国内访问 `jitpack.io` 偶尔较慢,重试即可;
 - 每次发布新版本:改 pom 版本号 → 提交 → 打新 tag(`v1.1.0`…)→ 推送,JitPack 会各自构建。
 
@@ -370,7 +371,7 @@ graph-lib/
 ├── jitpack.yml                 # 让 JitPack 能构建本库
 ├── scripts/push-to-github.ps1  # 建仓库 + 推送 + 失败诊断
 ├── src/main/java/io/github/softwindwf/graph/      # 46 个主类
-├── src/test/java/io/github/softwindwf/graph/      # 47 个测试类(669 个测试)
+├── src/test/java/io/github/softwindwf/graph/      # 47 个测试文件:默认 494 例,-Pdifferential 669 例
 ├── tiny*.txt routes.txt ...    # 测试数据
 ├── repo/                       # 库内 file:// 仓库:本库产物 + algs4 参照物
 ├── dist/                       # 现成可用的 jar(主/源码/Javadoc)

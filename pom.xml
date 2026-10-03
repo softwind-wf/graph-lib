@@ -65,21 +65,12 @@
   </repositories>
 
   <dependencies>
-    <!-- 测试:JUnit 5 -->
+    <!-- 测试:JUnit 5(唯一的默认测试依赖) -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <version>${junit.version}</version>
       <scope>test</scope>
-    </dependency>
-
-    <!-- 测试:官方参考实现,仅用于差分验证(optional 表示不传递给使用方) -->
-    <dependency>
-      <groupId>edu.princeton.cs</groupId>
-      <artifactId>algs4</artifactId>
-      <version>1.0.0.0</version>
-      <scope>test</scope>
-      <optional>true</optional>
     </dependency>
   </dependencies>
 
@@ -96,6 +87,31 @@
           <compilerArgs>
             <arg>-Xlint:all</arg>
           </compilerArgs>
+          <!--
+            默认构建不编译这些"差分测试"(它们要与 algs4 官方实现对比,而 algs4 不在 Maven 中央仓库,
+            也不随本仓库分发)。这样,全新克隆后直接 `mvn test` 就能跑,且没有任何第三方依赖。
+            想跑全部 669 个用例(含差分验证):mvn -Pdifferential test(需要 algs4 参照 jar,见 README)。
+            清单与用例数见 README"测试与验证";17 个文件用脚本核对过依赖闭包,不会有断裂引用。
+          -->
+          <testExcludes>
+            <testExclude>**/AcyclicSPTest.java</testExclude>
+            <testExclude>**/AdjMatrixEdgeWeightedDigraphTest.java</testExclude>
+            <testExclude>**/BellmanFordSPTest.java</testExclude>
+            <testExclude>**/BipartiteTest.java</testExclude>
+            <testExclude>**/BoruvkaMSTTest.java</testExclude>
+            <testExclude>**/DijkstraUndirectedSPTest.java</testExclude>
+            <testExclude>**/DinicTest.java</testExclude>
+            <testExclude>**/DirectedCycleTest.java</testExclude>
+            <testExclude>**/DirectedPathsTest.java</testExclude>
+            <testExclude>**/EdmondsKarpTest.java</testExclude>
+            <testExclude>**/FlowNetworkTest.java</testExclude>
+            <testExclude>**/FordFulkersonTest.java</testExclude>
+            <testExclude>**/GlobalMincutTest.java</testExclude>
+            <testExclude>**/JohnsonTest.java</testExclude>
+            <testExclude>**/MaxFlowTestSupport.java</testExclude>
+            <testExclude>**/StronglyConnectedComponentsTest.java</testExclude>
+            <testExclude>**/TransitiveClosureTest.java</testExclude>
+          </testExcludes>
         </configuration>
       </plugin>
 
@@ -147,6 +163,39 @@
   </build>
 
   <profiles>
+    <!--
+      差分测试:mvn -Pdifferential test
+      额外做两件事:①加入 algs4 参照物(仅测试作用域);②清空默认构建里的 testExcludes,
+      把 17 个差分测试类也编译进来 —— 于是 669 个用例全跑。
+      algs4 不在 Maven 中央仓库,默认从库内 repo/ 解析(见仓库声明);
+      若你把它装进了本地仓库,也会从本地仓库拿到。
+    -->
+    <profile>
+      <id>differential</id>
+      <dependencies>
+        <dependency>
+          <groupId>edu.princeton.cs</groupId>
+          <artifactId>algs4</artifactId>
+          <version>1.0.0.0</version>
+          <scope>test</scope>
+          <optional>true</optional>
+        </dependency>
+      </dependencies>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.10.1</version>
+            <configuration>
+              <!-- combine.self="override" 表示"清空父配置里的 testExcludes",而不是追加 -->
+              <testExcludes combine.self="override"/>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
     <!--
       发布/打包全套产物时激活:mvn -Prelease clean package
       产出 graph-lib-1.0.0.jar + -sources.jar + -javadoc.jar(发布到中央仓库要求后两者)。
