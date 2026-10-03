@@ -155,6 +155,9 @@ mvn -Prelease package   # 额外产出 -sources.jar / -javadoc.jar(需要联网�
 
 > 差分测试需要 algs4(仅 `test` 作用域,且 `<optional>`,不会传给使用方)。
 > 库内 `repo/edu/princeton/cs/algs4/` 自带一份参照 jar,构建时通过 `file://` 仓库解析。
+> **注意**:该目录已在 `.gitignore` 里(`repo/edu/`)—— algs4 是 GPLv3 构件,不应随公开仓库分发;
+> 从 GitHub 克隆后若想跑差分测试,把 algs4 的 jar 放到 `repo/edu/princeton/cs/algs4/1.0.0.0/`
+> (或装进你自己的本地仓库)即可。
 > 不想跑差分测试:删掉下面这些测试类并移除 pom 里 algs4 依赖即可 ——
 > `AdjMatrixEdgeWeightedDigraphTest` `AcyclicLPTest` `AcyclicSPTest` `BellmanFordSPTest`
 > `BipartiteMatchingTest` `BipartiteTest` `BoruvkaMSTTest` `DijkstraSPTest`
