@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  消费者示例:演示"把 graph-lib 当作普通依赖使用"。
+  运行方式(在本目录下):
+      mvn -o compile exec:java -Dexec.mainClass=demo.Demo
+  或者先在你的机器上把库装进本地仓库:
+      cd ../.. && mvn install          # 之后本示例 pom 里的 file:// 仓库就可以删掉
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>demo</groupId>
+  <artifactId>graph-lib-consumer</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+  <name>graph-lib consumer sample</name>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+
+  <!-- 库自带的 file:// 仓库:里面有 graph-lib 与测试用的 algs4 参照物 -->
+  <repositories>
+    <repository>
+      <id>graph-lib-local</id>
+      <url>file://${project.basedir}/../../repo</url>
+      <releases><enabled>true</enabled></releases>
+      <snapshots><enabled>false</enabled></snapshots>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <!-- 唯一依赖:图算法库(运行时零第三方依赖) -->
+    <dependency>
+      <groupId>io.github.softwind-wf</groupId>
+      <artifactId>graph-lib</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.10.1</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>

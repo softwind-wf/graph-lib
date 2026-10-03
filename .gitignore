@@ -1,0 +1,8 @@
+target/
+*.log
+.idea/
+*.iml
+.vscode/
+
+# 测试用的 algs4 参照 jar 不随公开仓库分发(见 README/LICENSE);需要差分测试时自行放入
+repo/edu/

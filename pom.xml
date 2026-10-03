@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  graph-lib:图算法库(独立发布单元)
+
+  设计目标:
+    · 运行时零依赖 —— 只要求 JDK 8(classifier 为编译目标 1.8),不使用任何第三方库;
+    · 测试需要 edu.princeton.cs:algs4(官方参考实现)当"参照物"做差分验证,声明为 test + optional,
+      不会传递给库的使用方;不需要差分测试时,把该依赖与带 algs4 引用的测试类去掉即可。
+    · 坐标里的 groupId 是 io.github.softwind-wf:GitHub 账号可用来在 Maven 中央仓库验证命名空间。
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.github.softwind-wf</groupId>
+  <artifactId>graph-lib</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <name>graph-lib</name>
+  <description>图算法库:46 个类覆盖遍历、最小生成树、最短路、有向图与强连通分量、网络流与匹配、
+    全局最小割、指派问题、AOV/AOE 与关键路径,含符号图与统一文本/Graphviz 读写。</description>
+  <url>https://github.com/softwind-wf/graph-lib</url>
+
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>https://opensource.org/licenses/MIT</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>softwind-wf</id>
+      <name>softwind-wf</name>
+      <email>softwind-wf@users.noreply.github.com</email>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/softwind-wf/graph-lib.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/softwind-wf/graph-lib.git</developerConnection>
+    <url>https://github.com/softwind-wf/graph-lib</url>
+  </scm>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <junit.version>5.8.2</junit.version>
+  </properties>
+
+  <!-- 工作区内的 file:// 仓库:放 algs4 参照物(以及 deploy 时本库自己的产物) -->
+  <repositories>
+    <repository>
+      <id>graph-lib-local</id>
+      <name>graph-lib local file repository</name>
+      <url>file://${project.basedir}/repo</url>
+      <releases><enabled>true</enabled></releases>
+      <snapshots><enabled>true</enabled></snapshots>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <!-- 测试:JUnit 5 -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- 测试:官方参考实现,仅用于差分验证(optional 表示不传递给使用方) -->
+    <dependency>
+      <groupId>edu.princeton.cs</groupId>
+      <artifactId>algs4</artifactId>
+      <version>1.0.0.0</version>
+      <scope>test</scope>
+      <optional>true</optional>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.10.1</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+          <source>1.8</source>
+          <target>1.8</target>
+          <compilerArgs>
+            <arg>-Xlint:all</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.22.2</version>
+        <configuration>
+          <includes>
+            <include>**/*Test.java</include>
+          </includes>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.2.2</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+            </manifest>
+            <manifestEntries>
+              <Automatic-Module-Name>io.github.softwindwf.graph</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+
+      <!-- 发布需要:源码包与 Javadoc 包(用 -Prelease 激活;它们依赖的一些构件在内网离线仓库里可能缺失) -->
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-install-plugin</artifactId>
+        <version>3.1.0</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <version>3.1.2</version>
+        <configuration>
+          <!-- 默认部署到工作区内的 file:// 仓库(内网/离线可用);发布到中央仓库时改 -DaltDeploymentRepository -->
+          <altDeploymentRepository>graph-lib-local::default::file://${project.basedir}/repo</altDeploymentRepository>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!--
+      发布/打包全套产物时激活:mvn -Prelease clean package
+      产出 graph-lib-1.0.0.jar + -sources.jar + -javadoc.jar(发布到中央仓库要求后两者)。
+    -->
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>3.0.1</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals><goal>jar-no-fork</goal></goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>3.4.1</version>
+            <configuration>
+              <encoding>UTF-8</encoding>
+              <doclint>all</doclint>
+              <quiet>true</quiet>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals><goal>jar</goal></goals>
+              </execution>
+            </executions>
+          </plugin>
+
+          <!--
+            Maven 中央仓库要求构件做 GPG 签名。用环境变量提供密钥:
+              set GPG_KEYNAME=你的密钥ID
+              set GPG_PASSPHRASE=密钥口令
+            没有 GPG 密钥时不要激活 release profile(这一步会失败)。
+          -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals><goal>sign</goal></goals>
+              </execution>
+            </executions>
+            <configuration>
+              <keyname>${env.GPG_KEYNAME}</keyname>
+              <passphrase>${env.GPG_PASSPHRASE}</passphrase>
+              <gpgArguments>
+                <arg>--pinentry-mode</arg>
+                <arg>loopback</arg>
+              </gpgArguments>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>
